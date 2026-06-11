@@ -936,53 +936,74 @@ async function searchNutrition(){
   const query = document.getElementById('f-name').value.trim();
   if(!query){showToast('enter a food name first');return}
   const results = document.getElementById('nresults');
-  const status = document.getElementById('nsearch-status');
   results.style.display='block';
-  status.textContent='searching USDA database…';
-  results.innerHTML='<div class="nsearch-status" id="nsearch-status">searching USDA database…</div>';
+  results.innerHTML='<div class="nsearch-status">searching…</div>';
   document.getElementById('nfilled').style.display='none';
-  try{
-    const url=`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&dataType=SR%20Legacy,Survey%20(FNDDS),Foundation&pageSize=8&api_key=${USDA_KEY}`;
-    const res=await fetch(url);
-    if(!res.ok) throw new Error('API error '+res.status);
-    const data=await res.json();
-    const foods=data.foods||[];
-    if(!foods.length){
-      document.getElementById('nresults').innerHTML='<div class="nsearch-status">no results found — try a simpler name</div>';
-      return;
-    }
-    let html='';
-    foods.forEach((food,i)=>{
-      const nutrients=food.foodNutrients||[];
-      const get=(name)=>{
-        const n=nutrients.find(n=>n.nutrientName&&n.nutrientName.toLowerCase().includes(name.toLowerCase()));
-        return n?Math.round(n.value*10)/10:0;
-      };
-      const prot=get('protein');
-      const kcal=get('energy')||get('kcal');
-      const fat=get('total lipid')||get('fat');
-      const carb=get('carbohydrate');
-      const dataStr=JSON.stringify({name:food.description,prot,kcal,fat,carb}).replace(/'/g,'&apos;');
-      html+=`<div class="nresult" onclick="fillNutrition('${dataStr}')">
-        <div class="nresult-name">${food.description.toLowerCase()}</div>
-        <div class="nresult-meta">
-          <span>${prot}g protein</span>
-          <span>${kcal} kcal</span>
-          <span>${fat}g fat</span>
-          <span>${carb}g carbs</span>
-          <span style="color:var(--t3)">per 100g</span>
-        </div>
-      </div>`;
-    });
-    document.getElementById('nresults').innerHTML=html;
-  } catch(e){
-    document.getElementById('nresults').innerHTML=`<div class="nsearch-status">error: ${e.message}. Check connection and try again.</div>`;
+  // Try USDA first, fall back to Open Food Facts
+  const foods = await searchUSDA(query) || await searchOFF(query);
+  if(!foods||!foods.length){
+    results.innerHTML='<div class="nsearch-status">no results found — try a simpler term (e.g. "tofu" not "firm tofu block")</div>';
+    return;
   }
+  let html='';
+  foods.forEach(food=>{
+    const ds=JSON.stringify({name:food.name,prot:food.prot,kcal:food.kcal,fat:food.fat,carb:food.carb}).replace(/\\/g,'\\\\').replace(/"/g,'&quot;');
+    html+=`<div class="nresult" onclick='fillNutrition(this)' data-food="${ds}">
+      <div class="nresult-name">${food.name.toLowerCase()}</div>
+      <div class="nresult-meta">
+        <span>${food.prot}g protein</span>
+        <span>${food.kcal} kcal</span>
+        <span>${food.fat}g fat</span>
+        <span>${food.carb}g carbs</span>
+        <span style="color:var(--t3)">per 100g · ${food.src}</span>
+      </div>
+    </div>`;
+  });
+  results.innerHTML=html;
 }
 
-function fillNutrition(dataStr){
+async function searchUSDA(query){
+  try{
+    // Correct USDA format: repeated dataType params, not comma-separated
+    const params=new URLSearchParams({query,pageSize:'8',api_key:USDA_KEY});
+    params.append('dataType','Foundation');
+    params.append('dataType','SR Legacy');
+    params.append('dataType','Survey (FNDDS)');
+    const res=await fetch('https://api.nal.usda.gov/fdc/v1/foods/search?'+params.toString());
+    if(!res.ok) return null;
+    const data=await res.json();
+    return (data.foods||[]).map(food=>{
+      const n=food.foodNutrients||[];
+      const get=name=>{ const f=n.find(x=>x.nutrientName&&x.nutrientName.toLowerCase().includes(name)); return f?Math.round(f.value*10)/10:0; };
+      return {name:food.description,prot:get('protein'),kcal:get('energy')||get('kcal'),fat:get('total lipid'),carb:get('carbohydrate'),src:'USDA'};
+    }).filter(f=>f.prot>0||f.kcal>0);
+  }catch(e){ return null; }
+}
+
+async function searchOFF(query){
+  try{
+    const url=`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=8&fields=product_name,nutriments,brands`;
+    const res=await fetch(url);
+    if(!res.ok) return null;
+    const data=await res.json();
+    return (data.products||[]).map(p=>{
+      const n=p.nutriments||{};
+      const name=(p.product_name||(p.brands||'unknown')).slice(0,60);
+      return {
+        name,
+        prot:Math.round((n['proteins_100g']||0)*10)/10,
+        kcal:Math.round(n['energy-kcal_100g']||n['energy_100g']/4.184||0),
+        fat:Math.round((n['fat_100g']||0)*10)/10,
+        carb:Math.round((n['carbohydrates_100g']||0)*10)/10,
+        src:'Open Food Facts'
+      };
+    }).filter(f=>f.name&&(f.prot>0||f.kcal>0));
+  }catch(e){ return null; }
+}
+
+function fillNutrition(el){
   let data;
-  try{ data=JSON.parse(dataStr.replace(/&apos;/g,"'")); } catch(e){ return; }
+  try{ data=JSON.parse(el.dataset.food.replace(/&quot;/g,'"')); } catch(e){ showToast('could not parse nutrition data'); return; }
   // Set name if field is empty or matches a generic placeholder
   const nameEl=document.getElementById('f-name');
   if(!nameEl.value.trim()) nameEl.value=data.name;
