@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>食料品 Tracker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--sf:#181b23;--sf2:#1e2130;--sf3:#252a3a;
+  --bd:rgba(255,255,255,0.07);--bd2:rgba(255,255,255,0.13);
+  --t:#e8eaf0;--t2:#8b90a0;--t3:#555c70;
+  --green:#3ecf8e;--gd:rgba(62,207,142,0.13);
+  --amber:#f5a623;--ad:rgba(245,166,35,0.13);
+  --red:#f2566a;--rd:rgba(242,86,106,0.13);
+  --blue:#4f8ef7;--bld:rgba(79,142,247,0.13);
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+  --r:10px;--rs:6px;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--t);min-height:100vh;font-size:14px;overscroll-behavior:none}
+
+/* HEADER */
+header{border-bottom:1px solid var(--bd);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg);z-index:50;gap:10px}
+.logo{font-size:15px;font-weight:600;letter-spacing:-.01em;flex-shrink:0}.logo span{color:var(--green)}
+.hstats{display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end}
+.hs{text-align:right}
+.hs-val{font-family:var(--mono);font-size:14px;font-weight:500}
+.g{color:var(--green)}.a{color:var(--amber)}.r{color:var(--red)}
+.hs-lbl{font-size:10px;color:var(--t3);margin-top:1px}
+
+/* TABS */
+.tabs{display:flex;border-bottom:1px solid var(--bd);background:var(--bg);position:sticky;top:57px;z-index:40}
+.tab{padding:10px 16px;font-size:13px;font-weight:500;color:var(--t2);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--sans)}
+.tab.on{color:var(--green);border-bottom-color:var(--green)}
+.tab:hover{color:var(--t)}
+
+/* LAYOUT */
+.app{display:grid;grid-template-columns:1fr 300px;min-height:calc(100vh - 97px)}
+@media(max-width:700px){.app{grid-template-columns:1fr}.right{border-left:none;border-top:1px solid var(--bd)}.tabs .tab{padding:10px 12px;font-size:12px}}
+
+/* LEFT */
+.left{padding:16px;overflow-y:auto}
+.page{display:none}.page.on{display:block}
+
+/* TOOLBAR */
+.toolbar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.btn{font-family:var(--sans);font-size:13px;font-weight:500;padding:8px 14px;border-radius:var(--rs);border:1px solid var(--bd2);cursor:pointer;background:var(--sf2);color:var(--t);transition:background .15s}
+.btn:hover,.btn:active{background:var(--sf3)}
+.btn-green{background:var(--green);color:#061a0e;border-color:var(--green);font-weight:600}
+.btn-green:hover{background:#5cd9a4}
+.btn-red{background:var(--rd);color:var(--red);border-color:rgba(242,86,106,0.3)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{padding:7px 10px;font-size:16px}
+
+/* BUDGET BAR */
+.budget-bar-wrap{margin-bottom:16px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:12px 14px}
+.budget-bar-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.budget-lbl{font-size:12px;color:var(--t2)}
+.budget-nums{font-family:var(--mono);font-size:13px}
+.budget-track{height:8px;background:var(--sf3);border-radius:4px;overflow:hidden}
+.budget-fill{height:100%;border-radius:4px;transition:width .4s,background .3s}
+.budget-sub{font-size:11px;color:var(--t3);margin-top:6px}
+
+/* FILTERS */
+.filters{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.pill{font-size:12px;padding:4px 11px;border-radius:20px;border:1px solid var(--bd2);cursor:pointer;background:transparent;color:var(--t2);font-family:var(--sans);transition:all .15s}
+.pill:hover{color:var(--t)}
+.pill.on{background:var(--gd);border-color:rgba(62,207,142,0.4);color:var(--green)}
+
+/* ITEM CARDS */
+.card-list{display:flex;flex-direction:column;gap:6px}
+.icard{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:12px 14px;cursor:pointer;transition:border-color .15s;user-select:none;position:relative}
+.icard:hover{border-color:var(--bd2)}
+.icard.need-buy{border-left:3px solid var(--amber)}
+.icard.in-stock{border-left:3px solid var(--green)}
+.card-top{display:flex;align-items:center;gap:10px}
+.cdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cname{font-size:14px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ccost{font-family:var(--mono);font-size:13px;font-weight:500;white-space:nowrap}
+.card-mid{display:flex;gap:10px;margin-top:7px;padding-left:18px;flex-wrap:wrap}
+.cmeta{font-size:11px;color:var(--t3)}.cmeta strong{color:var(--t2);font-weight:500}
+.card-meals{display:flex;gap:4px;margin-top:5px;padding-left:18px;flex-wrap:wrap}
+.meal-tag{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500}
+.mt-b{background:rgba(79,142,247,0.15);color:#4f8ef7}
+.mt-l{background:rgba(62,207,142,0.15);color:#3ecf8e}
+.mt-d{background:rgba(167,139,250,0.15);color:#a78bfa}
+.mt-s{background:rgba(245,166,35,0.15);color:#f5a623}
+.card-notes{font-size:11px;color:var(--t3);margin-top:5px;padding-left:18px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.days-left{position:absolute;top:10px;right:12px;font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:20px}
+.dl-ok{background:var(--gd);color:var(--green)}
+.dl-low{background:var(--ad);color:var(--amber)}
+.dl-out{background:var(--rd);color:var(--red)}
+.stock-badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-left:4px;font-weight:500}
+.sb-stock{background:var(--gd);color:var(--green)}
+.sb-need{background:var(--ad);color:var(--amber)}
+.empty{text-align:center;padding:48px 20px;color:var(--t3);font-size:13px}
+.empty-icon{font-size:32px;margin-bottom:10px}
+
+/* SHOPPING LIST */
+.shop-section{margin-bottom:20px}
+.shop-head{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.shop-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--rs);margin-bottom:6px;cursor:pointer;transition:background .15s}
+.shop-item:hover{background:var(--sf2)}
+.shop-cb{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--bd2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .15s}
+.shop-cb.checked{background:var(--green);border-color:var(--green);color:#061a0e}
+.shop-name{flex:1;font-size:13px}
+.shop-name.checked{text-decoration:line-through;color:var(--t3)}
+.shop-detail{font-size:11px;color:var(--t3);font-family:var(--mono)}
+.shop-cost{font-size:12px;font-family:var(--mono);color:var(--amber);white-space:nowrap}
+
+/* MEAL BREAKDOWN */
+.meal-section{margin-bottom:16px}
+.meal-head{font-size:12px;font-weight:600;color:var(--t2);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.meal-icon{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px}
+.meal-items{display:flex;flex-direction:column;gap:4px}
+.meal-row{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--sf);border-radius:var(--rs);font-size:12px}
+.meal-row-name{color:var(--t2);flex:1}
+.meal-row-stats{display:flex;gap:10px;font-family:var(--mono);font-size:11px;color:var(--t3)}
+.meal-total{display:flex;justify-content:space-between;padding:6px 10px;border-top:1px solid var(--bd);margin-top:4px;font-size:12px;font-weight:500}
+.meal-total-label{color:var(--t2)}
+
+/* COMPARE */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.cmp-card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:12px}
+.cmp-card.best{border-color:rgba(62,207,142,0.4);background:var(--gd)}
+.cmp-name{font-size:12px;font-weight:500;margin-bottom:4px}
+.cmp-val{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--green)}
+.cmp-sub{font-size:11px;color:var(--t3);margin-top:2px}
+.cmp-best-badge{font-size:10px;background:var(--green);color:#061a0e;padding:2px 7px;border-radius:20px;font-weight:600;margin-left:6px}
+
+/* OVERLAY + DRAWER */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;bottom:0;left:0;right:0;background:var(--sf);border-top:1px solid var(--bd2);border-radius:20px 20px 0 0;z-index:201;padding:0 16px 32px;max-height:93vh;overflow-y:auto;transform:translateY(100%);transition:transform .25s cubic-bezier(.32,.72,0,1)}
+.drawer.open{transform:translateY(0)}
+.dhandle{width:36px;height:4px;background:var(--bd2);border-radius:2px;margin:12px auto 16px}
+.dtitle{font-size:15px;font-weight:600;margin-bottom:18px}
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.field label{font-size:11px;color:var(--t3);font-weight:500;letter-spacing:.04em;text-transform:uppercase}
+.field input,.field select,.field textarea{background:var(--sf2);border:1px solid var(--bd2);border-radius:var(--rs);padding:10px 12px;font-family:var(--sans);font-size:14px;color:var(--t);outline:none;transition:border-color .15s;width:100%;-webkit-appearance:none}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:rgba(62,207,142,0.5)}
+.field textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
+.field select option{background:#1e2130}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.meal-checkboxes{display:flex;gap:8px;flex-wrap:wrap}
+.mchk{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:var(--rs);border:1px solid var(--bd2);cursor:pointer;font-size:13px;background:var(--sf2);transition:all .15s;user-select:none}
+.mchk.on{border-color:rgba(62,207,142,0.4);background:var(--gd);color:var(--green)}
+.calc-prev{background:var(--gd);border:1px solid rgba(62,207,142,0.25);border-radius:var(--rs);padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--green);font-family:var(--mono);display:none}
+.drawer-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.field-hint{font-size:11px;color:var(--t3);margin-top:3px}
+
+/* RIGHT PANEL */
+.right{border-left:1px solid var(--bd);padding:16px;display:flex;flex-direction:column;overflow-y:auto}
+.plabel{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:10px}
+.psec{margin-bottom:20px}
+.scard{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:13px 15px;margin-bottom:8px}
+.scard-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
+.scard-lbl{font-size:12px;color:var(--t2)}
+.scard-val{font-family:var(--mono);font-size:18px;font-weight:500}
+.scard-sub{font-size:11px;color:var(--t3)}
+.sep{height:1px;background:var(--bd);margin:4px 0 16px}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.bar-lbl{min-width:78px;color:var(--t2);display:flex;align-items:center;gap:5px;font-size:11px}
+.bar-track{flex:1;height:6px;background:var(--sf3);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s}
+.bar-amt{font-family:var(--mono);font-size:11px;color:var(--t2);min-width:40px;text-align:right}
+.mrow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd)}
+.mrow:last-child{border-bottom:none}
+.mname{font-size:12px;color:var(--t2)}
+.mvals{display:flex;gap:6px;align-items:center}
+.mval{font-family:var(--mono);font-size:12px}
+.badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:500}
+.bg{background:var(--gd);color:var(--green)}.ba{background:var(--ad);color:var(--amber)}.br{background:var(--rd);color:var(--red)}
+.copy-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.export-box{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:11px 13px;font-family:var(--mono);font-size:11px;color:var(--t2);line-height:1.7;white-space:pre-wrap;word-break:break-all;max-height:150px;overflow-y:auto}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--green);color:#061a0e;font-size:13px;font-weight:600;padding:9px 18px;border-radius:var(--rs);opacity:0;transition:all .2s;pointer-events:none;z-index:300;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.section-empty{text-align:center;padding:24px;color:var(--t3);font-size:12px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">食料品 <span>tracker</span></div>
+  <div class="hstats">
+    <div class="hs"><div class="hs-val g" id="h-weekly">¥0</div><div class="hs-lbl">/ week</div></div>
+    <div class="hs"><div class="hs-val" id="h-protein" style="color:var(--t2)">0g</div><div class="hs-lbl">protein/day</div></div>
+    <div class="hs"><div class="hs-val" id="h-kcal" style="color:var(--t2)">0</div><div class="hs-lbl">kcal/day</div></div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab on" onclick="showTab('items',this)">items</button>
+  <button class="tab" onclick="showTab('meals',this)">meals</button>
+  <button class="tab" onclick="showTab('shopping',this)">shopping</button>
+  <button class="tab" onclick="showTab('compare',this)">compare</button>
+</div>
+
+<div class="app">
+<div class="left">
+
+  <!-- ITEMS TAB -->
+  <div class="page on" id="tab-items">
+    <div class="toolbar">
+      <button class="btn btn-green" onclick="openDrawer()">+ add item</button>
+      <button class="btn" onclick="loadDefaults()">Japan defaults</button>
+      <button class="btn btn-red btn-sm" onclick="clearAll()">clear all</button>
+      <button class="btn btn-sm" onclick="openBudgetSettings()" title="Set weekly budget">⚙ budget</button>
+    </div>
+    <div id="budget-bar-wrap" class="budget-bar-wrap" style="display:none">
+      <div class="budget-bar-top">
+        <span class="budget-lbl">weekly grocery budget</span>
+        <span class="budget-nums"><span id="bb-spent">¥0</span> / <span id="bb-limit" style="color:var(--t3)">¥0</span></span>
+      </div>
+      <div class="budget-track"><div class="budget-fill" id="bb-fill" style="width:0%;background:var(--green)"></div></div>
+      <div class="budget-sub" id="bb-sub"></div>
+    </div>
+    <div class="filters">
+      <button class="pill on" data-cat="all" onclick="setFilter('all',this)">all</button>
+      <button class="pill" data-cat="protein" onclick="setFilter('protein',this)">protein</button>
+      <button class="pill" data-cat="carbs" onclick="setFilter('carbs',this)">carbs</button>
+      <button class="pill" data-cat="dairy" onclick="setFilter('dairy',this)">dairy</button>
+      <button class="pill" data-cat="veg" onclick="setFilter('veg',this)">veg & fruit</button>
+      <button class="pill" data-cat="fat" onclick="setFilter('fat',this)">fats & snacks</button>
+      <button class="pill" data-cat="condiment" onclick="setFilter('condiment',this)">condiments</button>
+      <button class="pill" data-cat="supplement" onclick="setFilter('supplement',this)">supplements</button>
+    </div>
+    <div class="card-list" id="card-list"></div>
+    <div class="empty" id="empty-items" style="display:none">
+      <div class="empty-icon">🛒</div>
+      <div>No items yet.<br>Tap <strong>+ add item</strong> or <strong>Japan defaults</strong>.</div>
+    </div>
+  </div>
+
+  <!-- MEALS TAB -->
+  <div class="page" id="tab-meals">
+    <div id="meal-breakdown"></div>
+  </div>
+
+  <!-- SHOPPING TAB -->
+  <div class="page" id="tab-shopping">
+    <div class="toolbar">
+      <button class="btn btn-sm" onclick="checkAllShopping()">check all</button>
+      <button class="btn btn-sm" onclick="clearChecked()">clear checked</button>
+    </div>
+    <div id="shopping-list"></div>
+  </div>
+
+  <!-- COMPARE TAB -->
+  <div class="page" id="tab-compare">
+    <p style="font-size:13px;color:var(--t2);margin-bottom:14px">Items normalised to price per 100g or 100ml. Lower is better value.</p>
+    <div id="compare-list"></div>
+  </div>
+
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="right">
+  <div class="psec">
+    <div class="plabel">weekly cost</div>
+    <div class="scard">
+      <div class="scard-row"><span class="scard-lbl">groceries / week</span><span class="scard-val g" id="r-weekly">¥0</span></div>
+      <div class="scard-sub" id="r-sub">0 items</div>
+    </div>
+    <div class="scard">
+      <div class="scard-row"><span class="scard-lbl">per month</span><span class="scard-val" id="r-monthly">¥0</span></div>
+      <div class="scard-sub">× 4.3 weeks</div>
+    </div>
+  </div>
+  <div class="psec">
+    <div class="plabel">by category</div>
+    <div id="cat-bars"></div>
+  </div>
+  <div class="sep"></div>
+  <div class="psec">
+    <div class="plabel">daily nutrition</div>
+    <div id="macro-rows"></div>
+    <div style="font-size:11px;color:var(--t3);margin-top:10px">target: <strong style="color:var(--t2)">140g protein</strong> · 2,800 kcal · 69.8kg</div>
+  </div>
+  <div class="sep"></div>
+  <div class="psec">
+    <div class="copy-row">
+      <div class="plabel" style="margin-bottom:0">export for Claude</div>
+      <button class="btn btn-sm" onclick="copyExport()">copy</button>
+    </div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:8px">paste into Claude for meal review & tips</div>
+    <div class="export-box" id="export-box">add items to generate export</div>
+  </div>
+</div>
+</div>
+
+<!-- OVERLAY -->
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+
+<!-- ITEM DRAWER -->
+<div class="drawer" id="drawer">
+  <div class="dhandle"></div>
+  <div class="dtitle" id="dtitle">add item</div>
+  <div class="field">
+    <label>item name</label>
+    <input type="text" id="f-name" placeholder="e.g. Rice (5kg bag)" />
+  </div>
+  <div class="fg2">
+    <div class="field">
+      <label>category</label>
+      <select id="f-cat">
+        <option value="protein">protein</option>
+        <option value="carbs">carbs</option>
+        <option value="dairy">dairy</option>
+        <option value="veg">veg & fruit</option>
+        <option value="fat">fats & snacks</option>
+        <option value="condiment">condiments</option>
+        <option value="supplement">supplements</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>pack price (¥)</label>
+      <input type="number" id="f-price" placeholder="4000" inputmode="numeric" oninput="updatePreview()" />
+    </div>
+  </div>
+  <div class="fg3">
+    <div class="field">
+      <label>total amount in pack</label>
+      <input type="number" id="f-qty" placeholder="5000" step="0.1" inputmode="decimal" oninput="updatePreview()" />
+      <span class="field-hint">e.g. 5000 for a 5kg bag</span>
+    </div>
+    <div class="field">
+      <label>unit</label>
+      <input type="text" id="f-unit" placeholder="g" />
+      <span class="field-hint">g, ml, piece, can…</span>
+    </div>
+    <div class="field">
+      <label>use per meal (units)</label>
+      <input type="number" id="f-per-meal" placeholder="200" step="0.1" inputmode="decimal" oninput="updatePreview()" />
+      <span class="field-hint">amount each time you use it</span>
+    </div>
+  </div>
+  <div class="fg2">
+    <div class="field">
+      <label>days per week you use this</label>
+      <input type="number" id="f-dpw" placeholder="7" min="0" max="7" step="0.5" inputmode="decimal" oninput="updatePreview()" />
+      <span class="field-hint">e.g. 4 for rice 4 days, 2 for chapati 2 days</span>
+    </div>
+    <div class="field" style="justify-content:flex-end;padding-bottom:4px">
+      <label style="margin-bottom:auto">&nbsp;</label>
+      <div style="font-size:11px;color:var(--t3);line-height:1.6">tip: rice 4 days + chapati 2 days + pasta 1 day = 7 days total across 3 items</div>
+    </div>
+  </div>
+  <div class="field">
+    <label>which meal slot? (for meal breakdown)</label>
+    <div class="meal-checkboxes">
+      <div class="mchk" id="mchk-b" onclick="toggleMeal('b')">🌅 breakfast</div>
+      <div class="mchk" id="mchk-l" onclick="toggleMeal('l')">🌿 lunch</div>
+      <div class="mchk" id="mchk-d" onclick="toggleMeal('d')">🍜 dinner</div>
+      <div class="mchk" id="mchk-s" onclick="toggleMeal('s')">🥜 snack</div>
+    </div>
+  </div>
+  <div class="fg2">
+    <div class="field">
+      <label>protein per unit (g)</label>
+      <input type="number" id="f-protein" placeholder="0" step="0.1" inputmode="decimal" />
+    </div>
+    <div class="field">
+      <label>kcal per unit</label>
+      <input type="number" id="f-kcal" placeholder="0" inputmode="numeric" />
+    </div>
+  </div>
+  <div class="fg2">
+    <div class="field">
+      <label>stock status</label>
+      <select id="f-stock">
+        <option value="in-stock">in stock</option>
+        <option value="need-buy">need to buy</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>units currently in stock</label>
+      <input type="number" id="f-stock-qty" placeholder="0" step="0.1" inputmode="decimal" oninput="updatePreview()" />
+      <span class="field-hint">e.g. 3000g remaining</span>
+    </div>
+  </div>
+  <div class="field">
+    <label>notes — how to cook, meal use, tips</label>
+    <textarea id="f-notes" placeholder="e.g. 200g per meal (2 meals/day). Wash before cooking. Pairs with canned fish and vegetables."></textarea>
+  </div>
+  <div class="calc-prev" id="calc-prev"></div>
+  <div class="drawer-actions">
+    <button class="btn btn-green" id="dsave" onclick="saveItem()">add item</button>
+    <button class="btn btn-red btn-sm" id="ddel" style="display:none" onclick="deleteFromDrawer()">delete</button>
+    <button class="btn btn-sm" onclick="closeDrawer()">cancel</button>
+  </div>
+</div>
+
+<!-- BUDGET DRAWER -->
+<div class="drawer" id="budget-drawer">
+  <div class="dhandle"></div>
+  <div class="dtitle">weekly budget settings</div>
+  <div class="field">
+    <label>weekly grocery budget (¥)</label>
+    <input type="number" id="b-limit" placeholder="4000" inputmode="numeric" />
+    <span class="field-hint">set to 0 to hide the budget bar</span>
+  </div>
+  <div class="drawer-actions">
+    <button class="btn btn-green" onclick="saveBudget()">save</button>
+    <button class="btn btn-sm" onclick="closeBudgetDrawer()">cancel</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CATC={protein:'#3ecf8e',carbs:'#4f8ef7',dairy:'#a78bfa',veg:'#34d399',fat:'#f5a623',condiment:'#8b90a0',supplement:'#f2566a'};
+const MEAL_NAMES={b:'breakfast',l:'lunch',d:'dinner',s:'snack'};
+const MEAL_TAGS={b:'mt-b',l:'mt-l',d:'mt-d',s:'mt-s'};
+let items=[], activeFilter='all', editingId=null, selectedMeals=[], checkedShop=new Set(), budgetLimit=0;
+
+const DEFAULTS=[
+  {name:'Eggs (10 pack)',cat:'protein',price:300,qty:10,unit:'egg',perMeal:2,meals:['b','l'],protein:6,kcal:80,stock:'in-stock',stockQty:7,notes:'Boil a batch Sunday for grab-and-go. Scramble for breakfast.'},
+  {name:'Chicken thigh 700g',cat:'protein',price:700,qty:700,unit:'g',perMeal:150,meals:['d'],protein:0.17,kcal:2,stock:'in-stock',stockQty:400,notes:'Batch-cook Sun+Wed. 150g per dinner.'},
+  {name:'Canned tuna (5 pack)',cat:'protein',price:650,qty:5,unit:'can',perMeal:1,meals:['l'],protein:17,kcal:60,stock:'in-stock',stockQty:3,notes:'Drain, add soy sauce over rice at lunch.'},
+  {name:'Canned mackerel (saba-kan)',cat:'protein',price:120,qty:1,unit:'can',perMeal:0.5,meals:['l'],protein:20,kcal:160,stock:'need-buy',stockQty:0,notes:'Rotate with tuna at lunch. Best protein-per-yen.'},
+  {name:'Tofu momen (block)',cat:'protein',price:70,qty:1,unit:'block',perMeal:0.5,meals:['d','l'],protein:15,kcal:120,stock:'in-stock',stockQty:1,notes:'Pan-fry with soy sauce or cube into miso soup.'},
+  {name:'Oats',cat:'carbs',price:400,qty:500,unit:'g',perMeal:80,meals:['b'],protein:0.13,kcal:3.5,stock:'in-stock',stockQty:300,notes:'80g dry every morning with milk and kinako.'},
+  {name:'Rice (2kg bag)',cat:'carbs',price:900,qty:2000,unit:'g',perMeal:200,daysPerWeek:4,meals:['l','d'],protein:0.025,kcal:1.3,stock:'in-stock',stockQty:1200,notes:'200g cooked per meal, ~4 days/week. Other days: chapati or pasta.'},
+  {name:'Bananas (bunch)',cat:'veg',price:150,qty:6,unit:'banana',perMeal:1,meals:['b','s'],protein:1.3,kcal:90,stock:'need-buy',stockQty:2,notes:'Post-workout or breakfast add-in.'},
+  {name:'Vegetables mixed',cat:'veg',price:300,qty:500,unit:'g',perMeal:100,meals:['l','d'],protein:0.02,kcal:0.3,stock:'in-stock',stockQty:200,notes:'Buy cheapest seasonal. Broccoli, cabbage, spinach.'},
+  {name:'Milk 1L',cat:'dairy',price:170,qty:1000,unit:'ml',perMeal:200,meals:['b','s'],protein:0.032,kcal:0.62,stock:'in-stock',stockQty:600,notes:'Mix into oats + pre-bed glass.'},
+  {name:'Peanuts',cat:'fat',price:300,qty:250,unit:'g',perMeal:30,meals:['s'],protein:0.25,kcal:5.8,stock:'in-stock',stockQty:150,notes:'30g with curd as afternoon snack.'},
+  {name:'Miso paste',cat:'condiment',price:300,qty:400,unit:'g',perMeal:15,meals:['d'],protein:0.12,kcal:2.5,stock:'in-stock',stockQty:300,notes:'Miso soup with tofu at dinner. Lasts many weeks.'},
+  {name:'Kinako powder',cat:'condiment',price:300,qty:200,unit:'g',perMeal:10,meals:['b'],protein:0.37,kcal:4.5,stock:'in-stock',stockQty:150,notes:'1 tablespoon in morning oats every day.'},
+];
+
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function fmt(n){return '¥'+Math.round(n).toLocaleString()}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+
+function dailyUse(item){
+  // returns perMeal amount — used for meal-tab display
+  return item.perMeal || 0;
+}
+function weeklyUse(item){
+  // perMeal × daysPerWeek gives total weekly consumption
+  const dpw = (item.daysPerWeek !== undefined && item.daysPerWeek !== '') ? +item.daysPerWeek : (item.meals||[]).length;
+  return (item.perMeal||0) * (dpw||0);
+}
+function calcWeekly(item){
+  const wu=weeklyUse(item);
+  if(!item.qty||!item.price||!wu) return 0;
+  return(item.price/item.qty)*wu;
+}
+function calcProtein(item){return(item.protein||0)*(weeklyUse(item)/7)}
+function calcKcal(item){return(item.kcal||0)*(weeklyUse(item)/7)}
+function daysLeft(item){
+  const dailyAvg=weeklyUse(item)/7;
+  if(!dailyAvg||!item.stockQty) return null;
+  return Math.floor(item.stockQty/dailyAvg);
+}
+function price100(item){
+  if(!item.price||!item.qty) return null;
+  if(item.unit==='g'||item.unit==='ml') return(item.price/item.qty)*100;
+  return null;
+}
+
+// ---- RENDER ITEMS ----
+function render(){
+  const list=document.getElementById('card-list');
+  const empty=document.getElementById('empty-items');
+  const visible=activeFilter==='all'?items:items.filter(i=>i.cat===activeFilter);
+  list.innerHTML='';
+  empty.style.display=visible.length===0?'block':'none';
+  visible.forEach(item=>{
+    const w=calcWeekly(item);
+    const col=CATC[item.cat]||'#8b90a0';
+    const dl=daysLeft(item);
+    const dlClass=dl===null?'':dl>7?'dl-ok':dl>2?'dl-low':'dl-out';
+    const dlText=dl===null?'':`${dl}d left`;
+    const div=document.createElement('div');
+    div.className='icard '+(item.stock||'');
+    div.onclick=()=>openDrawer(item.id);
+    const mealTags=(item.meals||[]).map(m=>`<span class="meal-tag ${MEAL_TAGS[m]}">${MEAL_NAMES[m]}</span>`).join('');
+    const du=dailyUse(item);
+    const p100=price100(item);
+    div.innerHTML=`
+      ${dl!==null?`<div class="days-left ${dlClass}">${dlText}</div>`:''}
+      <div class="card-top">
+        <span class="cdot" style="background:${col}"></span>
+        <span class="cname">${esc(item.name)}</span>
+        <span class="ccost" style="color:${w>500?'var(--amber)':'var(--t2)'}">${fmt(w)}/wk</span>
+      </div>
+      <div class="card-mid">
+        <span class="cmeta"><strong>${item.perMeal||0}</strong> ${esc(item.unit||'')} / meal</span>
+        <span class="cmeta"><strong>${item.daysPerWeek!==undefined&&item.daysPerWeek!==''?item.daysPerWeek:(item.meals||[]).length}</strong> days/wk</span>
+        <span class="cmeta"><strong>${Math.round(calcProtein(item)*10)/10}g</strong> protein/day</span>
+        ${p100!==null?`<span class="cmeta"><strong>¥${Math.round(p100)}</strong>/100${item.unit}</span>`:''}
+      </div>
+      ${mealTags?`<div class="card-meals">${mealTags}</div>`:''}
+      ${item.notes?`<div class="card-notes">${esc(item.notes)}</div>`:''}
+    `;
+    list.appendChild(div);
+  });
+  updateSummary();
+  renderBudgetBar();
+  renderMeals();
+  renderShopping();
+  renderCompare();
+}
+
+// ---- SUMMARY ----
+function updateSummary(){
+  const tw=items.reduce((s,i)=>s+calcWeekly(i),0);
+  const tp=items.reduce((s,i)=>s+calcProtein(i),0);
+  const tk=items.reduce((s,i)=>s+calcKcal(i),0);
+
+  document.getElementById('h-weekly').textContent=fmt(tw);
+  const hp=document.getElementById('h-protein');
+  hp.textContent=Math.round(tp)+'g';
+  hp.className='hs-val '+(tp>=130?'g':tp>=100?'a':'r');
+  const hk=document.getElementById('h-kcal');
+  hk.textContent=Math.round(tk);
+  hk.className='hs-val '+(tk>=2500?'g':tk>=2000?'a':'r');
+
+  document.getElementById('r-weekly').textContent=fmt(tw);
+  document.getElementById('r-sub').textContent=`${items.length} item${items.length!==1?'s':''}`;
+  document.getElementById('r-monthly').textContent=fmt(tw*4.3);
+
+  const cats={};
+  items.forEach(i=>{cats[i.cat]=(cats[i.cat]||0)+calcWeekly(i)});
+  const max=Math.max(...Object.values(cats),1);
+  document.getElementById('cat-bars').innerHTML=Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`
+    <div class="bar-row">
+      <span class="bar-lbl"><span class="cdot" style="background:${CATC[c]||'#555'}"></span>${c}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/max*100)}%;background:${CATC[c]||'#555'}"></div></div>
+      <span class="bar-amt">${fmt(v)}</span>
+    </div>`).join('')||'<div style="color:var(--t3);font-size:12px">no items yet</div>';
+
+  const pb=tp>=130?'badge bg':tp>=100?'badge ba':'badge br';
+  const kb=tk>=2500?'badge bg':tk>=2000?'badge ba':'badge br';
+  document.getElementById('macro-rows').innerHTML=`
+    <div class="mrow"><span class="mname">protein / day</span><span class="mvals"><span class="mval">${Math.round(tp)}g / 140g</span><span class="${pb}">${tp>=130?'on target':tp>=100?'almost':'too low'}</span></span></div>
+    <div class="mrow"><span class="mname">kcal / day (est.)</span><span class="mvals"><span class="mval">${Math.round(tk)} / 2800</span><span class="${kb}">${tk>=2500?'on target':tk>=2000?'almost':'too low'}</span></span></div>
+    <div class="mrow"><span class="mname">items need buying</span><span class="mvals"><span class="mval">${items.filter(i=>i.stock==='need-buy').length}</span></span></div>`;
+
+  updateExport(tw,tp,tk);
+  save();
+}
+
+// ---- BUDGET BAR ----
+function renderBudgetBar(){
+  const wrap=document.getElementById('budget-bar-wrap');
+  if(!budgetLimit){wrap.style.display='none';return}
+  wrap.style.display='block';
+  const tw=items.reduce((s,i)=>s+calcWeekly(i),0);
+  const pct=Math.min(Math.round(tw/budgetLimit*100),100);
+  const over=tw>budgetLimit;
+  document.getElementById('bb-spent').textContent=fmt(tw);
+  document.getElementById('bb-limit').textContent=fmt(budgetLimit);
+  const fill=document.getElementById('bb-fill');
+  fill.style.width=pct+'%';
+  fill.style.background=over?'var(--red)':pct>80?'var(--amber)':'var(--green)';
+  const diff=Math.abs(tw-budgetLimit);
+  document.getElementById('bb-sub').textContent=over?`¥${Math.round(diff).toLocaleString()} over budget`:`¥${Math.round(diff).toLocaleString()} remaining`;
+}
+
+// ---- MEALS TAB ----
+function renderMeals(){
+  const slots={b:[],l:[],d:[],s:[]};
+  items.forEach(item=>{
+    (item.meals||[]).forEach(m=>{
+      slots[m].push(item);
+    });
+  });
+  const icons={b:'🌅',l:'🌿',d:'🍜',s:'🥜'};
+  const labels={b:'Breakfast',l:'Lunch',d:'Dinner',s:'Snack'};
+  let html='';
+  Object.entries(slots).forEach(([meal,mitems])=>{
+    const mProtein=mitems.reduce((s,i)=>{
+      const perMealUse=i.perMeal||0;
+      return s+(i.protein||0)*perMealUse;
+    },0);
+    const mKcal=mitems.reduce((s,i)=>{
+      const perMealUse=i.perMeal||0;
+      return s+(i.kcal||0)*perMealUse;
+    },0);
+    html+=`<div class="meal-section">
+      <div class="meal-head"><div class="meal-icon">${icons[meal]}</div>${labels[meal]}</div>
+      <div class="meal-items">`;
+    if(!mitems.length){html+=`<div class="section-empty">no items assigned to ${labels[meal].toLowerCase()}</div>`;
+    } else {
+      mitems.forEach(i=>{
+        const p=(i.protein||0)*(i.perMeal||0);
+        const k=(i.kcal||0)*(i.perMeal||0);
+        html+=`<div class="meal-row">
+          <span class="meal-row-name">${esc(i.name)} <span style="color:var(--t3);font-size:11px">× ${i.perMeal||0} ${esc(i.unit||'')}</span></span>
+          <span class="meal-row-stats"><span>${Math.round(p*10)/10}g protein</span><span>${Math.round(k)} kcal</span></span>
+        </div>`;
+      });
+      html+=`<div class="meal-total">
+        <span class="meal-total-label">meal total</span>
+        <span style="display:flex;gap:12px;font-family:var(--mono);font-size:12px">
+          <span style="color:var(--green)">${Math.round(mProtein*10)/10}g protein</span>
+          <span style="color:var(--t2)">${Math.round(mKcal)} kcal</span>
+        </span>
+      </div>`;
+    }
+    html+=`</div></div>`;
+  });
+  document.getElementById('meal-breakdown').innerHTML=html||'<div class="section-empty">assign items to meals to see breakdown</div>';
+}
+
+// ---- SHOPPING TAB ----
+function renderShopping(){
+  const needBuy=items.filter(i=>i.stock==='need-buy');
+  const lowStock=items.filter(i=>{
+    const dl=daysLeft(i);
+    return dl!==null&&dl<=3&&i.stock==='in-stock';
+  });
+  const allGood=items.filter(i=>i.stock==='in-stock'&&(daysLeft(i)===null||daysLeft(i)>3));
+  let html='';
+
+  if(needBuy.length||lowStock.length){
+    const combined=[...needBuy,...lowStock.filter(i=>i.stock!=='need-buy')];
+    const totalCost=combined.reduce((s,i)=>s+i.price,0);
+    html+=`<div class="shop-section">
+      <div class="shop-head"><span>buy now (${combined.length} items)</span><span style="font-family:var(--mono);color:var(--amber)">~${fmt(totalCost)}</span></div>`;
+    combined.forEach(item=>{
+      const dl=daysLeft(item);
+      const checked=checkedShop.has(item.id);
+      html+=`<div class="shop-item" onclick="toggleShopCheck('${item.id}')">
+        <div class="shop-cb ${checked?'checked'}">${checked?'✓':''}</div>
+        <div style="flex:1">
+          <div class="shop-name ${checked?'checked'}">${esc(item.name)}</div>
+          <div style="font-size:11px;color:var(--t3)">${dl!==null?`${dl} days left · `:''} ${fmt(item.price)} / pack</div>
+        </div>
+        <div class="shop-cost">${fmt(item.price)}</div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+
+  if(allGood.length){
+    html+=`<div class="shop-section">
+      <div class="shop-head"><span>in stock (${allGood.length})</span></div>`;
+    allGood.forEach(item=>{
+      const dl=daysLeft(item);
+      html+=`<div class="shop-item" onclick="openDrawer('${item.id}')">
+        <div style="width:18px;height:18px;border-radius:4px;background:var(--gd);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--green);flex-shrink:0">✓</div>
+        <div class="shop-name" style="flex:1">${esc(item.name)}</div>
+        <div style="font-size:11px;color:var(--t3);font-family:var(--mono)">${dl!==null?`${dl}d`:'—'}</div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+
+  if(!items.length) html='<div class="section-empty" style="padding-top:48px">add items to generate your shopping list</div>';
+  document.getElementById('shopping-list').innerHTML=html;
+}
+
+function toggleShopCheck(id){
+  if(checkedShop.has(id)) checkedShop.delete(id);
+  else checkedShop.add(id);
+  renderShopping();
+}
+function checkAllShopping(){
+  items.filter(i=>i.stock==='need-buy').forEach(i=>checkedShop.add(i.id));
+  renderShopping();
+}
+function clearChecked(){
+  checkedShop.forEach(id=>{
+    const item=items.find(i=>i.id===id);
+    if(item){item.stock='in-stock';}
+  });
+  checkedShop.clear();
+  render();showToast('marked as in stock');
+}
+
+// ---- COMPARE TAB ----
+function renderCompare(){
+  const comparable=items.filter(i=>price100(i)!==null);
+  const byCat={};
+  comparable.forEach(i=>{
+    const cat=i.cat;
+    if(!byCat[cat]) byCat[cat]=[];
+    byCat[cat].push(i);
+  });
+  let html='';
+  Object.entries(byCat).forEach(([cat,citems])=>{
+    if(citems.length<1) return;
+    const sorted=[...citems].sort((a,b)=>price100(a)-price100(b));
+    const best=sorted[0];
+    const col=CATC[cat]||'#8b90a0';
+    html+=`<div style="margin-bottom:20px">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin-bottom:8px;display:flex;align-items:center;gap:6px">
+        <span class="cdot" style="background:${col}"></span>${cat}
+      </div>
+      <div class="compare-grid">`;
+    sorted.forEach(item=>{
+      const p=price100(item);
+      const isBest=item.id===best.id;
+      html+=`<div class="cmp-card ${isBest?'best':''}" onclick="openDrawer('${item.id}')">
+        <div class="cmp-name">${esc(item.name)}${isBest?'<span class="cmp-best-badge">best value</span>':''}</div>
+        <div class="cmp-val">¥${Math.round(p)}</div>
+        <div class="cmp-sub">per 100${item.unit} · ¥${item.price} pack</div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  });
+  document.getElementById('compare-list').innerHTML=html||'<div class="section-empty" style="padding-top:48px">add items measured in g or ml to compare prices</div>';
+}
+
+// ---- EXPORT ----
+function updateExport(tw,tp,tk){
+  if(!items.length){document.getElementById('export-box').textContent='add items to generate export';return}
+  let out=`=== GROCERY TRACKER EXPORT ===\nWeekly grocery cost: ¥${Math.round(tw)}\nDaily protein (tracked): ${Math.round(tp)}g / 140g target\nDaily kcal (tracked): ${Math.round(tk)} / 2800 target\nProfile: 69.8kg, 6'1", lean bulk\n\nMEAL BREAKDOWN:\n`;
+  ['b','l','d','s'].forEach(m=>{
+    const mi=items.filter(i=>(i.meals||[]).includes(m));
+    if(mi.length){
+      const mp=mi.reduce((s,i)=>(s+(i.protein||0)*(i.perMeal||0)),0);
+      const mk=mi.reduce((s,i)=>(s+(i.kcal||0)*(i.perMeal||0)),0);
+      out+=`\n${MEAL_NAMES[m].toUpperCase()}: ${Math.round(mp)}g protein, ${Math.round(mk)} kcal\n`;
+      mi.forEach(i=>out+=`  - ${i.name}: ${i.perMeal||0} ${i.unit||''}\n`);
+    }
+  });
+  out+=`\nALL ITEMS:\n`;
+  items.forEach(i=>{
+    const w=calcWeekly(i),p=calcProtein(i),k=calcKcal(i),dl=daysLeft(i),p100=price100(i);
+    out+=`\n[${i.cat.toUpperCase()}] ${i.name}\n`;
+    out+=`  Price: ¥${i.price} for ${i.qty} ${i.unit||''}  |  ¥${Math.round(i.price/i.qty*100)}/100${i.unit||''}\n`;
+    out+=`  Per meal: ${i.perMeal||0} ${i.unit||''}  |  meals: ${(i.meals||[]).map(m=>MEAL_NAMES[m]).join(', ')||'none'}\n`;
+    out+=`  Daily use: ${dailyUse(i)} ${i.unit||''}  |  weekly cost: ¥${Math.round(w)}\n`;
+    out+=`  Per unit: ${i.protein||0}g protein, ${i.kcal||0} kcal  |  daily: ${Math.round(p*10)/10}g protein, ${Math.round(k)} kcal\n`;
+    out+=`  Stock: ${i.stock||'unknown'}${dl!==null?` (${dl} days left)`:''}\n`;
+    if(i.notes) out+=`  Notes: ${i.notes}\n`;
+  });
+  out+=`\n===\nPlease: (1) review the meal breakdown for protein gaps by meal, (2) check if daily kcal+protein targets are met, (3) suggest cheap Japanese swaps, (4) flag timing or meal balance issues for 6AM training and lean muscle gain at 69.8kg.`;
+  document.getElementById('export-box').textContent=out;
+}
+
+// ---- DRAWER ----
+function updatePreview(){
+  const price=+document.getElementById('f-price').value||0;
+  const qty=+document.getElementById('f-qty').value||0;
+  const perMeal=+document.getElementById('f-per-meal').value||0;
+  const stockQty=+document.getElementById('f-stock-qty').value||0;
+  const dpwRaw=document.getElementById('f-dpw').value;
+  const dpw=dpwRaw!==''?+dpwRaw:selectedMeals.length||0;
+  const prev=document.getElementById('calc-prev');
+  if(price>0&&qty>0){
+    const unitCost=price/qty;
+    const weekly=unitCost*perMeal*dpw;
+    const dailyAvg=(perMeal*dpw)/7;
+    const packDays=dailyAvg>0?Math.round(qty/dailyAvg):null;
+    const stockDays=stockQty>0&&dailyAvg>0?Math.floor(stockQty/dailyAvg):null;
+    const unit=document.getElementById('f-unit').value||'unit';
+    let lines=[`¥${Math.round(unitCost*100)}/100${unit}  ·  ¥${Math.round(unitCost)}/unit`];
+    if(dpw>0&&perMeal>0) lines.push(`${perMeal} ${unit} × ${dpw} days/week = ${Math.round(perMeal*dpw)} ${unit}/week`);
+    if(weekly>0) lines.push(`¥${Math.round(weekly)}/week  ·  ¥${Math.round(weekly*4.3)}/month`);
+    if(packDays) lines.push(`1 pack lasts ~${packDays} days`);
+    if(stockDays!==null) lines.push(`current stock lasts ~${stockDays} days`);
+    prev.style.display='block';
+    prev.textContent=lines.join('\n');
+  } else prev.style.display='none';
+}
+
+function toggleMeal(m){
+  const el=document.getElementById('mchk-'+m);
+  if(selectedMeals.includes(m)){
+    selectedMeals=selectedMeals.filter(x=>x!==m);
+    el.classList.remove('on');
+  } else {
+    selectedMeals.push(m);
+    el.classList.add('on');
+  }
+  updatePreview();
+}
+
+function openDrawer(id){
+  editingId=id||null;
+  const item=id?items.find(i=>i.id===id):null;
+  selectedMeals=item?[...(item.meals||[])]:[];
+  ['b','l','d','s'].forEach(m=>{
+    document.getElementById('mchk-'+m).classList.toggle('on',selectedMeals.includes(m));
+  });
+  document.getElementById('dtitle').textContent=item?`edit: ${item.name}`:'add item';
+  document.getElementById('dsave').textContent=item?'save changes':'add item';
+  document.getElementById('ddel').style.display=item?'inline-flex':'none';
+  document.getElementById('calc-prev').style.display='none';
+  const flds={name:'',cat:'protein',price:'',qty:'',unit:'',perMeal:'',protein:'',kcal:'',stock:'in-stock',stockQty:'',notes:''};
+  if(item) Object.keys(flds).forEach(k=>{flds[k]=item[k]!==undefined?item[k]:flds[k]});
+  document.getElementById('f-name').value=flds.name;
+  document.getElementById('f-cat').value=flds.cat;
+  document.getElementById('f-price').value=flds.price;
+  document.getElementById('f-qty').value=flds.qty;
+  document.getElementById('f-unit').value=flds.unit;
+  document.getElementById('f-per-meal').value=flds.perMeal;
+  document.getElementById('f-protein').value=flds.protein;
+  document.getElementById('f-kcal').value=flds.kcal;
+  document.getElementById('f-stock').value=flds.stock;
+  document.getElementById('f-stock-qty').value=flds.stockQty;
+    document.getElementById('f-dpw').value=item&&item.daysPerWeek!==undefined?item.daysPerWeek:'';
+  document.getElementById('f-notes').value=flds.notes;
+  if(item) updatePreview();
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('drawer').classList.add('open');
+  setTimeout(()=>document.getElementById('f-name').focus(),300);
+}
+
+function closeDrawer(){
+  document.getElementById('overlay').classList.remove('open');
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('budget-drawer').classList.remove('open');
+  editingId=null;
+}
+
+function saveItem(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){showToast('enter an item name');return}
+  const data={
+    name,cat:document.getElementById('f-cat').value,
+    price:+document.getElementById('f-price').value||0,
+    qty:+document.getElementById('f-qty').value||1,
+    unit:document.getElementById('f-unit').value.trim()||'unit',
+    perMeal:+document.getElementById('f-per-meal').value||0,
+    daysPerWeek:document.getElementById('f-dpw').value!==''?+document.getElementById('f-dpw').value:selectedMeals.length||0,
+    meals:[...selectedMeals],
+    protein:+document.getElementById('f-protein').value||0,
+    kcal:+document.getElementById('f-kcal').value||0,
+    stock:document.getElementById('f-stock').value,
+    stockQty:+document.getElementById('f-stock-qty').value||0,
+    notes:document.getElementById('f-notes').value.trim(),
+  };
+  if(editingId){
+    const idx=items.findIndex(i=>i.id===editingId);
+    if(idx>-1){items[idx]={...items[idx],...data};showToast('saved')}
+  } else {items.push({...data,id:genId()});showToast(`added: ${name}`)}
+  closeDrawer();render();
+}
+
+function deleteFromDrawer(){
+  if(!editingId)return;
+  const item=items.find(i=>i.id===editingId);
+  if(!confirm(`Delete "${item?.name}"?`))return;
+  items=items.filter(i=>i.id!==editingId);
+  closeDrawer();render();showToast('deleted');
+}
+
+// ---- BUDGET ----
+function openBudgetSettings(){
+  document.getElementById('b-limit').value=budgetLimit||'';
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('budget-drawer').classList.add('open');
+}
+function closeBudgetDrawer(){
+  document.getElementById('overlay').classList.remove('open');
+  document.getElementById('budget-drawer').classList.remove('open');
+}
+function saveBudget(){
+  budgetLimit=+document.getElementById('b-limit').value||0;
+  closeBudgetDrawer();renderBudgetBar();save();showToast(budgetLimit?`budget set to ${fmt(budgetLimit)}/week`:'budget cleared');
+}
+
+// ---- TABS ----
+function showTab(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('tab-'+id).classList.add('on');
+  el.classList.add('on');
+}
+
+// ---- FILTER ----
+function setFilter(cat,el){
+  activeFilter=cat;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');render();
+}
+
+// ---- UTILS ----
+function loadDefaults(){
+  if(items.length>0&&!confirm('Add Japan defaults to current list?'))return;
+  DEFAULTS.forEach(d=>items.push({...d,id:genId()}));
+  render();showToast('Japan defaults loaded');
+}
+function clearAll(){
+  if(!items.length)return;
+  if(!confirm('Clear all items?'))return;
+  items=[];checkedShop.clear();render();showToast('cleared');
+}
+function copyExport(){
+  const text=document.getElementById('export-box').textContent;
+  if(text.startsWith('add items'))return showToast('no items yet');
+  navigator.clipboard.writeText(text).then(()=>showToast('copied!')).catch(()=>showToast('long-press the box to copy'));
+}
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+function save(){
+  try{localStorage.setItem('grocery_v3',JSON.stringify({items,budgetLimit}))}catch(e){}
+}
+function load(){
+  try{
+    const s=localStorage.getItem('grocery_v3');
+    if(s){const d=JSON.parse(s);items=d.items||[];budgetLimit=d.budgetLimit||0;}
+  }catch(e){}
+  render();
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
+load();
+</script>
+</body>
+</html>
