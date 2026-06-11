@@ -178,6 +178,20 @@ header{border-bottom:1px solid var(--bd);padding:13px 16px;display:flex;align-it
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--green);color:#061a0e;font-size:13px;font-weight:600;padding:9px 18px;border-radius:var(--rs);opacity:0;transition:all .2s;pointer-events:none;z-index:300;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .section-empty{text-align:center;padding:24px;color:var(--t3);font-size:12px}
+
+/* NUTRITION SEARCH */
+.nsearch-row{display:flex;gap:8px;align-items:flex-end}
+.nsearch-row .field{flex:1;margin-bottom:0}
+.nsearch-row .btn{flex-shrink:0;height:40px;white-space:nowrap}
+.nresults{background:var(--sf2);border:1px solid var(--bd2);border-radius:var(--rs);margin-top:6px;max-height:220px;overflow-y:auto;display:none}
+.nresult{padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--bd);transition:background .1s;font-size:13px}
+.nresult:last-child{border-bottom:none}
+.nresult:hover,.nresult:active{background:var(--sf3)}
+.nresult-name{font-weight:500;margin-bottom:2px}
+.nresult-meta{font-size:11px;color:var(--t3);font-family:var(--mono)}
+.nresult-meta span{margin-right:10px}
+.nsearch-status{font-size:11px;color:var(--t3);padding:10px 12px;text-align:center}
+.nfilled{background:var(--gd);border:1px solid rgba(62,207,142,0.25);border-radius:var(--rs);padding:8px 12px;font-size:12px;color:var(--green);margin-top:6px;display:none}
 </style>
 </head>
 <body>
@@ -298,10 +312,15 @@ header{border-bottom:1px solid var(--bd);padding:13px 16px;display:flex;align-it
 <div class="drawer" id="drawer">
   <div class="dhandle"></div>
   <div class="dtitle" id="dtitle">add item</div>
-  <div class="field">
-    <label>item name</label>
-    <input type="text" id="f-name" placeholder="e.g. Rice (5kg bag)" />
+  <div class="nsearch-row">
+    <div class="field">
+      <label>item name</label>
+      <input type="text" id="f-name" placeholder="e.g. chicken thigh, tofu, oats…" oninput="clearNutriFill()" />
+    </div>
+    <button class="btn btn-sm" type="button" onclick="searchNutrition()" id="nsearch-btn" style="margin-bottom:12px">🔍 look up</button>
   </div>
+  <div class="nresults" id="nresults"><div class="nsearch-status" id="nsearch-status">searching…</div></div>
+  <div class="nfilled" id="nfilled"></div>
   <div class="fg2">
     <div class="field">
       <label>category</label>
@@ -908,6 +927,92 @@ function load(){
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
 load();
+
+// ---- USDA NUTRITION SEARCH ----
+const USDA_KEY = 'DEMO_KEY'; // free tier, 30 req/hr — enough for personal use
+let nutriSearchTimeout = null;
+
+async function searchNutrition(){
+  const query = document.getElementById('f-name').value.trim();
+  if(!query){showToast('enter a food name first');return}
+  const results = document.getElementById('nresults');
+  const status = document.getElementById('nsearch-status');
+  results.style.display='block';
+  status.textContent='searching USDA database…';
+  results.innerHTML='<div class="nsearch-status" id="nsearch-status">searching USDA database…</div>';
+  document.getElementById('nfilled').style.display='none';
+  try{
+    const url=`https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&dataType=SR%20Legacy,Survey%20(FNDDS),Foundation&pageSize=8&api_key=${USDA_KEY}`;
+    const res=await fetch(url);
+    if(!res.ok) throw new Error('API error '+res.status);
+    const data=await res.json();
+    const foods=data.foods||[];
+    if(!foods.length){
+      document.getElementById('nresults').innerHTML='<div class="nsearch-status">no results found — try a simpler name</div>';
+      return;
+    }
+    let html='';
+    foods.forEach((food,i)=>{
+      const nutrients=food.foodNutrients||[];
+      const get=(name)=>{
+        const n=nutrients.find(n=>n.nutrientName&&n.nutrientName.toLowerCase().includes(name.toLowerCase()));
+        return n?Math.round(n.value*10)/10:0;
+      };
+      const prot=get('protein');
+      const kcal=get('energy')||get('kcal');
+      const fat=get('total lipid')||get('fat');
+      const carb=get('carbohydrate');
+      const dataStr=JSON.stringify({name:food.description,prot,kcal,fat,carb}).replace(/'/g,'&apos;');
+      html+=`<div class="nresult" onclick="fillNutrition('${dataStr}')">
+        <div class="nresult-name">${food.description.toLowerCase()}</div>
+        <div class="nresult-meta">
+          <span>${prot}g protein</span>
+          <span>${kcal} kcal</span>
+          <span>${fat}g fat</span>
+          <span>${carb}g carbs</span>
+          <span style="color:var(--t3)">per 100g</span>
+        </div>
+      </div>`;
+    });
+    document.getElementById('nresults').innerHTML=html;
+  } catch(e){
+    document.getElementById('nresults').innerHTML=`<div class="nsearch-status">error: ${e.message}. Check connection and try again.</div>`;
+  }
+}
+
+function fillNutrition(dataStr){
+  let data;
+  try{ data=JSON.parse(dataStr.replace(/&apos;/g,"'")); } catch(e){ return; }
+  // Set name if field is empty or matches a generic placeholder
+  const nameEl=document.getElementById('f-name');
+  if(!nameEl.value.trim()) nameEl.value=data.name;
+  // Fill nutrition fields — values are per 100g from USDA
+  // If unit is 'g', protein/kcal per 1g = value/100
+  // If unit is something else (can, egg, ml), we fill per-100g and show a note
+  const unit=(document.getElementById('f-unit').value||'').toLowerCase().trim();
+  const isGrams=unit==='g'||unit==='ml'||unit==='';
+  if(isGrams){
+    document.getElementById('f-protein').value=Math.round(data.prot/100*100)/100; // per 1g
+    document.getElementById('f-kcal').value=Math.round(data.kcal/100*100)/100;
+  } else {
+    // For piece/can/egg units, fill per 100g and let user adjust
+    document.getElementById('f-protein').value=data.prot;
+    document.getElementById('f-kcal').value=data.kcal;
+  }
+  // Show confirmation
+  const filled=document.getElementById('nfilled');
+  const scaleNote=isGrams?`scaled to per 1${unit||'g'} — multiply by your unit size`:`per 100g — adjust for your actual unit size (e.g. 1 egg ≈ 50g so protein ≈ ${Math.round(data.prot*0.5*10)/10}g)`;
+  filled.style.display='block';
+  filled.innerHTML=`filled from USDA: <strong>${data.prot}g protein</strong> · <strong>${data.kcal} kcal</strong> · ${data.fat}g fat · ${data.carb}g carbs per 100g<br><span style="color:var(--green);opacity:0.7">${scaleNote}</span>`;
+  document.getElementById('nresults').style.display='none';
+  updatePreview();
+}
+
+function clearNutriFill(){
+  document.getElementById('nresults').style.display='none';
+  document.getElementById('nfilled').style.display='none';
+}
+
 </script>
 </body>
 </html>
