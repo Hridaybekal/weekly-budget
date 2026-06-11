@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grocery Budget Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181b23;
+    --surface2: #1e2130;
+    --surface3: #252a3a;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --text2: #8b90a0;
+    --text3: #555c70;
+    --green: #3ecf8e;
+    --green-dim: rgba(62,207,142,0.12);
+    --blue: #4f8ef7;
+    --blue-dim: rgba(79,142,247,0.12);
+    --amber: #f5a623;
+    --amber-dim: rgba(245,166,35,0.12);
+    --red: #f2566a;
+    --red-dim: rgba(242,86,106,0.12);
+    --purple: #a78bfa;
+    --purple-dim: rgba(167,139,250,0.12);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+    font-size: 14px;
+  }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+  .header-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .header-title span { color: var(--green); }
+  .header-stats { display: flex; gap: 24px; align-items: center; }
+  .hstat { text-align: right; }
+  .hstat-val { font-family: var(--mono); font-size: 16px; font-weight: 500; }
+  .hstat-val.over { color: var(--red); }
+  .hstat-val.ok { color: var(--green); }
+  .hstat-label { font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+  /* LAYOUT */
+  .app { display: grid; grid-template-columns: 1fr 340px; min-height: calc(100vh - 65px); }
+
+  /* LEFT PANEL */
+  .left { padding: 24px 28px; overflow-y: auto; }
+
+  .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 12px; }
+  .toolbar-left { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .btn {
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    padding: 7px 14px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border2); cursor: pointer;
+    background: var(--surface2); color: var(--text);
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .btn:hover { background: var(--surface3); border-color: rgba(255,255,255,0.2); }
+  .btn-primary { background: var(--green); color: #0a1a12; border-color: var(--green); font-weight: 600; }
+  .btn-primary:hover { background: #5cd9a4; border-color: #5cd9a4; }
+  .btn-danger { background: var(--red-dim); color: var(--red); border-color: rgba(242,86,106,0.3); }
+  .btn-danger:hover { background: rgba(242,86,106,0.2); }
+  .btn-sm { padding: 4px 9px; font-size: 12px; }
+
+  /* CATEGORY FILTER */
+  .filter-row { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+  .filter-pill {
+    font-size: 12px; padding: 4px 12px; border-radius: 20px;
+    border: 1px solid var(--border2); cursor: pointer;
+    background: transparent; color: var(--text2);
+    transition: all 0.15s; font-family: var(--sans);
+  }
+  .filter-pill:hover { border-color: rgba(255,255,255,0.25); color: var(--text); }
+  .filter-pill.active { background: var(--green-dim); border-color: rgba(62,207,142,0.4); color: var(--green); }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 700px; }
+  thead tr { border-bottom: 1px solid var(--border2); }
+  th {
+    text-align: left; padding: 8px 10px;
+    font-size: 11px; font-weight: 500; letter-spacing: 0.05em;
+    color: var(--text3); text-transform: uppercase;
+  }
+  th:last-child { text-align: right; }
+  td { padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .cell-input {
+    background: transparent; border: none; outline: none;
+    font-family: var(--sans); font-size: 13px; color: var(--text);
+    width: 100%; padding: 3px 0;
+  }
+  .cell-input:focus { color: #fff; }
+  .cell-input.mono { font-family: var(--mono); }
+  .cell-input::placeholder { color: var(--text3); }
+
+  select.cell-input {
+    cursor: pointer; appearance: none; -webkit-appearance: none;
+    background: transparent;
+  }
+  option { background: #1e2130; }
+
+  .cat-dot {
+    display: inline-block; width: 7px; height: 7px;
+    border-radius: 50%; margin-right: 7px; flex-shrink: 0;
+  }
+  .weekly-cost { font-family: var(--mono); font-size: 13px; font-weight: 500; text-align: right; }
+  .del-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text3); font-size: 16px; padding: 2px 6px;
+    border-radius: 4px; transition: color 0.1s, background 0.1s;
+    font-family: var(--sans);
+  }
+  .del-btn:hover { color: var(--red); background: var(--red-dim); }
+
+  /* ADD FORM */
+  .add-form {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-top: 20px;
+    display: none;
+  }
+  .add-form.open { display: block; }
+  .add-form h3 { font-size: 13px; font-weight: 600; margin-bottom: 14px; color: var(--text2); }
+  .form-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; color: var(--text3); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+  .field input, .field select, .field textarea {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); padding: 7px 10px;
+    font-family: var(--sans); font-size: 13px; color: var(--text);
+    outline: none; transition: border-color 0.15s;
+  }
+  .field input:focus, .field select:focus { border-color: rgba(62,207,142,0.5); }
+  .field textarea { resize: vertical; min-height: 56px; font-size: 12px; line-height: 1.5; }
+  .field select option { background: #1e2130; }
+
+  /* RIGHT PANEL */
+  .right {
+    border-left: 1px solid var(--border);
+    padding: 24px 20px;
+    display: flex; flex-direction: column; gap: 0;
+    overflow-y: auto;
+  }
+
+  .panel-section { margin-bottom: 24px; }
+  .panel-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text3); margin-bottom: 12px;
+  }
+
+  /* SUMMARY CARDS */
+  .sum-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 8px;
+  }
+  .sum-card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+  .sum-card-label { font-size: 12px; color: var(--text2); }
+  .sum-card-val { font-family: var(--mono); font-size: 18px; font-weight: 500; }
+  .sum-card-sub { font-size: 11px; color: var(--text3); }
+
+  /* BAR BREAKDOWN */
+  .cat-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; }
+  .cat-bar-label { min-width: 80px; color: var(--text2); display: flex; align-items: center; gap: 5px; }
+  .cat-bar-track { flex: 1; height: 6px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
+  .cat-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+  .cat-bar-val { font-family: var(--mono); font-size: 11px; color: var(--text2); min-width: 42px; text-align: right; }
+
+  /* PROTEIN TRACKER */
+  .macro-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .macro-row:last-child { border-bottom: none; }
+  .macro-name { font-size: 12px; color: var(--text2); }
+  .macro-vals { display: flex; gap: 6px; align-items: center; }
+  .macro-val { font-family: var(--mono); font-size: 12px; }
+  .macro-badge {
+    font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 500;
+  }
+  .badge-ok { background: var(--green-dim); color: var(--green); }
+  .badge-low { background: var(--amber-dim); color: var(--amber); }
+  .badge-miss { background: var(--red-dim); color: var(--red); }
+
+  /* EXPORT BOX */
+  .export-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 180px;
+    overflow-y: auto;
+    cursor: text;
+    user-select: all;
+  }
+
+  .copy-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .copy-hint { font-size: 11px; color: var(--text3); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--green); color: #0a1a12;
+    font-size: 13px; font-weight: 600;
+    padding: 10px 18px; border-radius: var(--radius-sm);
+    opacity: 0; transform: translateY(8px);
+    transition: all 0.25s; pointer-events: none; z-index: 999;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* EMPTY STATE */
+  .empty {
+    text-align: center; padding: 48px 20px;
+    color: var(--text3); font-size: 13px;
+  }
+  .empty div { font-size: 28px; margin-bottom: 10px; }
+
+  /* DIVIDER */
+  .sep { height: 1px; background: var(--border); margin: 4px 0 16px; }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .right { border-left: none; border-top: 1px solid var(--border); }
+    .form-grid { grid-template-columns: 1fr 1fr; }
+    .form-grid-2 { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">食料品 <span>tracker</span></div>
+  <div class="header-stats">
+    <div class="hstat">
+      <div class="hstat-val ok" id="h-weekly">¥0</div>
+      <div class="hstat-label">groceries / week</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-val" id="h-protein" style="color:var(--text2)">0g</div>
+      <div class="hstat-label">protein / day</div>
+    </div>
+    <div class="hstat">
+      <div class="hstat-val" id="h-monthly">¥0</div>
+      <div class="hstat-label">groceries / month</div>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+  <!-- LEFT -->
+  <div class="left">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <button class="btn btn-primary" onclick="toggleForm()">+ add item</button>
+        <button class="btn" onclick="loadDefaults()">load Japan defaults</button>
+        <button class="btn btn-danger btn-sm" onclick="clearAll()">clear all</button>
+      </div>
+    </div>
+
+    <div class="filter-row" id="filter-row">
+      <button class="filter-pill active" data-cat="all" onclick="setFilter('all',this)">all</button>
+      <button class="filter-pill" data-cat="protein" onclick="setFilter('protein',this)">protein</button>
+      <button class="filter-pill" data-cat="carbs" onclick="setFilter('carbs',this)">carbs</button>
+      <button class="filter-pill" data-cat="dairy" onclick="setFilter('dairy',this)">dairy</button>
+      <button class="filter-pill" data-cat="veg" onclick="setFilter('veg',this)">veg & fruit</button>
+      <button class="filter-pill" data-cat="fat" onclick="setFilter('fat',this)">fats & snacks</button>
+      <button class="filter-pill" data-cat="condiment" onclick="setFilter('condiment',this)">condiments</button>
+      <button class="filter-pill" data-cat="supplement" onclick="setFilter('supplement',this)">supplements</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:32px"></th>
+            <th>item</th>
+            <th>category</th>
+            <th>pack price (¥)</th>
+            <th>qty / pack</th>
+            <th>unit</th>
+            <th>daily use</th>
+            <th>protein/unit (g)</th>
+            <th>notes</th>
+            <th style="text-align:right">¥/week</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="item-body">
+        </tbody>
+      </table>
+      <div class="empty" id="empty-state">
+        <div>🛒</div>
+        <div>No items yet. Click <strong>+ add item</strong> or <strong>load Japan defaults</strong> to get started.</div>
+      </div>
+    </div>
+
+    <!-- ADD FORM -->
+    <div class="add-form" id="add-form">
+      <h3>new item</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label>item name</label>
+          <input type="text" id="f-name" placeholder="e.g. Canned mackerel" />
+        </div>
+        <div class="field">
+          <label>category</label>
+          <select id="f-cat">
+            <option value="protein">protein</option>
+            <option value="carbs">carbs</option>
+            <option value="dairy">dairy</option>
+            <option value="veg">veg & fruit</option>
+            <option value="fat">fats & snacks</option>
+            <option value="condiment">condiments</option>
+            <option value="supplement">supplements</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>pack price (¥)</label>
+          <input type="number" id="f-price" placeholder="650" min="0" />
+        </div>
+        <div class="field">
+          <label>qty per pack</label>
+          <input type="number" id="f-qty" placeholder="5" min="0.1" step="0.1" />
+        </div>
+      </div>
+      <div class="form-grid-2">
+        <div class="field">
+          <label>unit (g / ml / piece / can…)</label>
+          <input type="text" id="f-unit" placeholder="can" />
+        </div>
+        <div class="field">
+          <label>daily use (how many units/day)</label>
+          <input type="number" id="f-daily" placeholder="1" min="0" step="0.1" />
+        </div>
+        <div class="field">
+          <label>protein per unit (g) — optional</label>
+          <input type="number" id="f-protein" placeholder="20" min="0" step="0.1" />
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label>notes (meal use, timing, etc.)</label>
+        <textarea id="f-notes" placeholder="e.g. Lunch protein — drain & mix with soy sauce over rice. Rotate with tuna."></textarea>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="addItem()">add item</button>
+        <button class="btn" onclick="toggleForm()">cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right">
+    <!-- WEEKLY COST -->
+    <div class="panel-section">
+      <div class="panel-label">weekly grocery cost</div>
+      <div class="sum-card">
+        <div class="sum-card-head">
+          <span class="sum-card-label">total per week</span>
+          <span class="sum-card-val ok" id="r-weekly">¥0</span>
+        </div>
+        <div class="sum-card-sub" id="r-weekly-sub">based on 0 items</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-card-head">
+          <span class="sum-card-label">per month</span>
+          <span class="sum-card-val" id="r-monthly">¥0</span>
+        </div>
+        <div class="sum-card-sub">× 4.3 weeks</div>
+      </div>
+    </div>
+
+    <!-- CATEGORY BREAKDOWN -->
+    <div class="panel-section">
+      <div class="panel-label">by category</div>
+      <div id="cat-bars"></div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- PROTEIN TARGETS -->
+    <div class="panel-section">
+      <div class="panel-label">daily nutrition check</div>
+      <div id="macro-rows"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px">
+        targets: <strong style="color:var(--text2)">140g protein</strong> · 2,800 kcal · for 69.8kg, 6'1"
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- EXPORT -->
+    <div class="panel-section">
+      <div class="copy-row">
+        <div class="panel-label" style="margin-bottom:0">export for Claude review</div>
+        <button class="btn btn-sm" onclick="copyExport()">copy</button>
+      </div>
+      <div class="copy-hint" style="margin-bottom:8px">paste this into Claude to get nutrient analysis, meal tips, and budget advice</div>
+      <div class="export-box" id="export-box">add items to generate export</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CAT_COLORS = {
+  protein: '#3ecf8e',
+  carbs: '#4f8ef7',
+  dairy: '#a78bfa',
+  veg: '#34d399',
+  fat: '#f5a623',
+  condiment: '#8b90a0',
+  supplement: '#f2566a'
+};
+
+let items = [];
+let activeFilter = 'all';
+let editingId = null;
+
+const DEFAULTS = [
+  { name: 'Eggs (10 pack)', cat: 'protein', price: 300, qty: 10, unit: 'egg', daily: 3, protein: 6, notes: 'Breakfast + boil batch Sunday for lunch. 3/day = scrambled or boiled.' },
+  { name: 'Chicken thigh (700g)', cat: 'protein', price: 700, qty: 700, unit: 'g', daily: 150, protein: 0.17, notes: 'Dinner main. Batch-cook Sun+Wed. 150g/day cooked.' },
+  { name: 'Canned tuna (5 pack)', cat: 'protein', price: 650, qty: 5, unit: 'can', daily: 0.7, protein: 17, notes: 'Lunch staple — drain and mix with soy sauce over rice.' },
+  { name: 'Canned mackerel (saba-kan)', cat: 'protein', price: 120, qty: 1, unit: 'can', daily: 0.5, protein: 20, notes: 'Rotate with tuna at lunch. Best protein-per-yen in Japan.' },
+  { name: 'Tofu momen (1 block)', cat: 'protein', price: 70, qty: 1, unit: 'block', daily: 0.4, protein: 15, notes: 'Pan-fry with soy sauce for lunch, or cube into miso soup.' },
+  { name: 'Oats', cat: 'carbs', price: 400, qty: 500, unit: 'g', daily: 80, protein: 0.13, notes: 'Every breakfast. 80g dry with milk + kinako.' },
+  { name: 'Rice (2kg bag)', cat: 'carbs', price: 900, qty: 2000, unit: 'g', daily: 300, protein: 0.03, notes: 'Lunch + dinner base. 300g cooked/day approx.' },
+  { name: 'Bananas (bunch)', cat: 'veg', price: 150, qty: 6, unit: 'banana', daily: 1, protein: 1.3, notes: 'Post-workout carbs or breakfast add-in.' },
+  { name: 'Vegetables (mixed)', cat: 'veg', price: 300, qty: 1, unit: 'week', daily: 0.14, protein: 2, notes: 'Buy whatever is cheapest at the supermarket. Aim for variety.' },
+  { name: 'Milk (1 litre)', cat: 'dairy', price: 170, qty: 1000, unit: 'ml', daily: 250, protein: 0.032, notes: 'Breakfast with oats + pre-bed glass. 250ml/day.' },
+  { name: 'Peanuts / peanut butter', cat: 'fat', price: 300, qty: 1, unit: 'week', daily: 0.14, protein: 6, notes: 'Afternoon snack with curd. 30g serving adds ~200 kcal.' },
+  { name: 'Miso paste', cat: 'condiment', price: 300, qty: 1, unit: 'pack', daily: 0.03, protein: 0.5, notes: 'Miso soup with tofu side at dinner. 1 pack lasts ~4 weeks.' },
+  { name: 'Kinako powder', cat: 'condiment', price: 300, qty: 1, unit: 'bag', daily: 0.02, protein: 4, notes: 'Tablespoon in oats every morning. Good soy protein.' },
+  { name: 'Granola (small amount)', cat: 'carbs', price: 400, qty: 1, unit: 'bag', daily: 0.02, protein: 2, notes: 'Taste only — minimal nutritional value. Keep portion small.' },
+  { name: 'Soy milk (豆乳)', cat: 'dairy', price: 200, qty: 1000, unit: 'ml', daily: 0, protein: 0.036, notes: 'Optional swap for milk in oats — more protein per ml.' },
+];
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function calcWeeklyCost(item) {
+  if (!item.qty || !item.price || !item.daily) return 0;
+  const unitCost = item.price / item.qty;
+  const weeklyUnits = item.daily * 7;
+  return unitCost * weeklyUnits;
+}
+
+function calcDailyProtein(item) {
+  if (!item.protein || !item.daily) return 0;
+  let proteinPerDay;
+  if (item.unit === 'g' || item.unit === 'ml') {
+    proteinPerDay = item.daily * item.protein;
+  } else {
+    proteinPerDay = item.daily * item.protein;
+  }
+  return proteinPerDay;
+}
+
+function fmt(n) { return '¥' + Math.round(n).toLocaleString(); }
+
+function render() {
+  const body = document.getElementById('item-body');
+  const empty = document.getElementById('empty-state');
+  const visible = activeFilter === 'all' ? items : items.filter(i => i.cat === activeFilter);
+
+  body.innerHTML = '';
+  empty.style.display = visible.length === 0 ? 'block' : 'none';
+
+  visible.forEach(item => {
+    const weekly = calcWeeklyCost(item);
+    const col = CAT_COLORS[item.cat] || '#8b90a0';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="cat-dot" style="background:${col}"></span></td>
+      <td><input class="cell-input" value="${esc(item.name)}" onchange="updateItem('${item.id}','name',this.value)" placeholder="item name" /></td>
+      <td>
+        <select class="cell-input" onchange="updateItem('${item.id}','cat',this.value)">
+          ${['protein','carbs','dairy','veg','fat','condiment','supplement'].map(c=>`<option value="${c}" ${item.cat===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </td>
+      <td><input class="cell-input mono" type="number" value="${item.price}" onchange="updateItem('${item.id}','price',+this.value)" style="width:70px" /></td>
+      <td><input class="cell-input mono" type="number" value="${item.qty}" onchange="updateItem('${item.id}','qty',+this.value)" style="width:60px" /></td>
+      <td><input class="cell-input" value="${esc(item.unit)}" onchange="updateItem('${item.id}','unit',this.value)" style="width:55px" placeholder="g" /></td>
+      <td><input class="cell-input mono" type="number" value="${item.daily}" onchange="updateItem('${item.id}','daily',+this.value)" style="width:55px" step="0.1" /></td>
+      <td><input class="cell-input mono" type="number" value="${item.protein}" onchange="updateItem('${item.id}','protein',+this.value)" style="width:50px" step="0.1" /></td>
+      <td><input class="cell-input" value="${esc(item.notes)}" onchange="updateItem('${item.id}','notes',this.value)" placeholder="notes / meal use…" style="min-width:140px" /></td>
+      <td class="weekly-cost" style="color:${weekly>200?'#f5a623':'var(--text)'}">${fmt(weekly)}</td>
+      <td><button class="del-btn" onclick="deleteItem('${item.id}')">×</button></td>
+    `;
+    body.appendChild(tr);
+  });
+
+  updateSummary();
+}
+
+function esc(s) { return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function updateSummary() {
+  const totalWeekly = items.reduce((s,i) => s + calcWeeklyCost(i), 0);
+  const totalMonthly = totalWeekly * 4.3;
+  const totalProtein = items.reduce((s,i) => s + calcDailyProtein(i), 0);
+
+  document.getElementById('h-weekly').textContent = fmt(totalWeekly);
+  document.getElementById('h-monthly').textContent = fmt(totalMonthly);
+  const hp = document.getElementById('h-protein');
+  hp.textContent = Math.round(totalProtein) + 'g';
+  hp.style.color = totalProtein >= 130 ? 'var(--green)' : totalProtein >= 100 ? 'var(--amber)' : 'var(--red)';
+
+  document.getElementById('r-weekly').textContent = fmt(totalWeekly);
+  document.getElementById('r-weekly-sub').textContent = `based on ${items.length} item${items.length!==1?'s':''}`;
+  document.getElementById('r-monthly').textContent = fmt(totalMonthly);
+
+  // Category bars
+  const catTotals = {};
+  items.forEach(i => { catTotals[i.cat] = (catTotals[i.cat]||0) + calcWeeklyCost(i); });
+  const max = Math.max(...Object.values(catTotals), 1);
+  const bars = document.getElementById('cat-bars');
+  bars.innerHTML = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]).map(([cat,val])=>`
+    <div class="cat-bar-row">
+      <span class="cat-bar-label"><span class="cat-dot" style="background:${CAT_COLORS[cat]||'#555'}"></span>${cat}</span>
+      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${Math.round(val/max*100)}%;background:${CAT_COLORS[cat]||'#555'}"></div></div>
+      <span class="cat-bar-val">${fmt(val)}</span>
+    </div>`).join('') || '<div style="color:var(--text3);font-size:12px">no items yet</div>';
+
+  // Macro rows
+  const TARGET_PROTEIN = 140;
+  const macros = document.getElementById('macro-rows');
+  const pct = Math.round(totalProtein / TARGET_PROTEIN * 100);
+  const badge = totalProtein >= 130 ? 'badge-ok' : totalProtein >= 100 ? 'badge-low' : 'badge-miss';
+  const badgeText = totalProtein >= 130 ? 'on target' : totalProtein >= 100 ? 'getting close' : 'too low';
+  macros.innerHTML = `
+    <div class="macro-row">
+      <span class="macro-name">protein (daily)</span>
+      <span class="macro-vals">
+        <span class="macro-val">${Math.round(totalProtein)}g / ${TARGET_PROTEIN}g</span>
+        <span class="macro-badge ${badge}">${badgeText}</span>
+      </span>
+    </div>
+    <div class="macro-row">
+      <span class="macro-name">coverage</span>
+      <span class="macro-vals"><span class="macro-val">${pct}%</span></span>
+    </div>
+    <div class="macro-row">
+      <span class="macro-name">items tracked</span>
+      <span class="macro-vals"><span class="macro-val">${items.length}</span></span>
+    </div>`;
+
+  // Export
+  updateExport();
+  save();
+}
+
+function updateExport() {
+  if (items.length === 0) { document.getElementById('export-box').textContent = 'add items to generate export'; return; }
+  const totalWeekly = items.reduce((s,i) => s + calcWeeklyCost(i), 0);
+  const totalProtein = items.reduce((s,i) => s + calcDailyProtein(i), 0);
+  let out = `=== GROCERY TRACKER EXPORT ===\nWeekly grocery cost: ¥${Math.round(totalWeekly)}\nEst. daily protein from tracked items: ${Math.round(totalProtein)}g\nTarget: 140g protein, ~2800 kcal/day (69.8kg, 6'1")\n\nITEMS:\n`;
+  items.forEach(i => {
+    const w = calcWeeklyCost(i);
+    const p = calcDailyProtein(i);
+    out += `\n[${i.cat.toUpperCase()}] ${i.name}\n`;
+    out += `  Pack: ¥${i.price} for ${i.qty} ${i.unit}(s) — daily use: ${i.daily} ${i.unit}(s)\n`;
+    out += `  Protein per ${i.unit}: ${i.protein}g — daily protein contribution: ${Math.round(p*10)/10}g\n`;
+    out += `  Weekly cost: ¥${Math.round(w)}\n`;
+    if (i.notes) out += `  Notes: ${i.notes}\n`;
+  });
+  out += `\n===\nPlease: (1) calculate full macro/nutrition estimates, (2) identify protein gaps, (3) suggest cheaper swaps available in Japan, (4) give meal timing tips, (5) flag anything I'm missing for muscle gain.`;
+  document.getElementById('export-box').textContent = out;
+}
+
+function addItem() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { showToast('enter an item name'); return; }
+  const item = {
+    id: genId(),
+    name,
+    cat: document.getElementById('f-cat').value,
+    price: +document.getElementById('f-price').value || 0,
+    qty: +document.getElementById('f-qty').value || 1,
+    unit: document.getElementById('f-unit').value.trim() || 'unit',
+    daily: +document.getElementById('f-daily').value || 0,
+    protein: +document.getElementById('f-protein').value || 0,
+    notes: document.getElementById('f-notes').value.trim(),
+  };
+  items.push(item);
+  ['f-name','f-price','f-qty','f-unit','f-daily','f-protein','f-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = el.tagName === 'SELECT' ? el.options[0].value : '';
+  });
+  render();
+  showToast(`added: ${item.name}`);
+}
+
+function updateItem(id, field, val) {
+  const item = items.find(i => i.id === id);
+  if (item) { item[field] = val; updateSummary(); }
+}
+
+function deleteItem(id) {
+  const item = items.find(i => i.id === id);
+  items = items.filter(i => i.id !== id);
+  render();
+  if (item) showToast(`removed: ${item.name}`);
+}
+
+function toggleForm() {
+  const f = document.getElementById('add-form');
+  f.classList.toggle('open');
+  if (f.classList.contains('open')) document.getElementById('f-name').focus();
+}
+
+function setFilter(cat, el) {
+  activeFilter = cat;
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function loadDefaults() {
+  if (items.length > 0 && !confirm('This will add the Japan defaults to your current list. Continue?')) return;
+  DEFAULTS.forEach(d => items.push({ ...d, id: genId() }));
+  render();
+  showToast('Japan defaults loaded');
+}
+
+function clearAll() {
+  if (items.length === 0) return;
+  if (!confirm('Clear all items?')) return;
+  items = [];
+  render();
+  showToast('cleared');
+}
+
+function copyExport() {
+  const text = document.getElementById('export-box').textContent;
+  if (text === 'add items to generate export') { showToast('no items to export yet'); return; }
+  navigator.clipboard.writeText(text).then(() => showToast('copied to clipboard!')).catch(() => {
+    document.getElementById('export-box').select();
+    showToast('select all and copy manually');
+  });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function save() {
+  try { localStorage.setItem('grocery_items', JSON.stringify(items)); } catch(e) {}
+}
+
+function load() {
+  try {
+    const s = localStorage.getItem('grocery_items');
+    if (s) { items = JSON.parse(s); render(); }
+    else render();
+  } catch(e) { render(); }
+}
+
+load();
+</script>
+</body>
+</html>
