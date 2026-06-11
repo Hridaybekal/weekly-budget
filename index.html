@@ -628,9 +628,9 @@ function renderShopping(){
       const dl=daysLeft(item);
       const checked=checkedShop.has(item.id);
       html+=`<div class="shop-item" onclick="toggleShopCheck('${item.id}')">
-        <div class="shop-cb ${checked?'checked'}">${checked?'✓':''}</div>
+        <div class="shop-cb ${checked?"checked":""}">${checked?"✓":""}</div>
         <div style="flex:1">
-          <div class="shop-name ${checked?'checked'}">${esc(item.name)}</div>
+          <div class="shop-name ${checked?"checked":""}">${esc(item.name)}</div>
           <div style="font-size:11px;color:var(--t3)">${dl!==null?`${dl} days left · `:''} ${fmt(item.price)} / pack</div>
         </div>
         <div class="shop-cost">${fmt(item.price)}</div>
